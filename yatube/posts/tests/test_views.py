@@ -53,10 +53,14 @@ class PostModelTest(TestCase):
                 'posts:profile', kwargs={'username': PostModelTest.user}
             ): 'posts/profile.html',
             reverse(
-                'posts:post_detail', kwargs={'post_id': PostModelTest.posts[1].id}
+                'posts:post_detail', kwargs={
+                    'post_id': PostModelTest.posts[1].id
+                }
             ): 'posts/post_detail.html',
             reverse(
-                'posts:post_edit', kwargs={'post_id': PostModelTest.posts[1].id}
+                'posts:post_edit', kwargs={
+                    'post_id': PostModelTest.posts[1].id
+                }
             ): 'posts/create_post.html',
             reverse('posts:post_create'): 'posts/create_post.html',
         }
@@ -88,15 +92,24 @@ class PostModelTest(TestCase):
                     first_object.author.username,
                     self.user.username
                 )
-                self.assertEqual(first_object.group.title, PostModelTest.group.title)
+                self.assertEqual(
+                    first_object.group.title,
+                    PostModelTest.group.title
+                )
 
     def test_post_detail_show_correct_context(self):
         """Cловарь contex соответствует ожиданиям на странице 'post_detail'"""
-        response = self.client.get(reverse('posts:post_detail', args={PostModelTest.posts[1].id}))
+        response = self.client.get(reverse(
+            'posts:post_detail',
+            args={PostModelTest.posts[1].id}
+        ))
         first_object = response.context['full_post']
         self.assertEqual(response.status_code, 200)
         self.assertEqual(first_object.text, PostModelTest.posts[1].text)
-        self.assertEqual(first_object.author.username, PostModelTest.user.username)
+        self.assertEqual(
+            first_object.author.username,
+            PostModelTest.user.username
+        )
         self.assertEqual(first_object.group.title, PostModelTest.group.title)
 
     def test_post_create_show_correct_context(self):
@@ -111,7 +124,10 @@ class PostModelTest(TestCase):
 
     def test_post_edit_show_correct_context(self):
         """Cловарь contex соответствует ожиданиям на странице 'post_edit'"""
-        response = self.authorized_client.get(reverse('posts:post_edit', args=[PostModelTest.posts[1].id]))
+        response = self.authorized_client.get(reverse(
+            'posts:post_edit',
+            args=[PostModelTest.posts[1].id]
+        ))
         form = response.context['form']
         self.assertIsInstance(form, PostForm)
         self.assertEqual(form.instance, PostModelTest.posts[1])
@@ -133,7 +149,10 @@ class PostModelTest(TestCase):
                 'posts:group_list', kwargs={'slug': PostModelTest.group.slug}
             ) + '?page=2', 3),
             (reverse('posts:profile', args={PostModelTest.user}), 10),
-            (reverse('posts:profile', args={PostModelTest.user}) + '?page=2', 3),
+            (reverse(
+                'posts:profile',
+                args={PostModelTest.user}
+            ) + '?page=2', 3),
         ]
 
         for reverse_name, expected_num_posts in templates_url_names:
@@ -148,9 +167,15 @@ class PostModelTest(TestCase):
         """Пост отображается на страницах 'index', 'group_list' и 'profile'"""
         response = self.authorized_client.get(reverse('posts:index'))
         self.assertContains(response, PostModelTest.posts[1].text)
-        response = self.authorized_client.get(reverse('posts:group_list', kwargs={'slug': PostModelTest.group.slug}))
+        response = self.authorized_client.get(reverse(
+            'posts:group_list',
+            kwargs={'slug': PostModelTest.group.slug}
+        ))
         self.assertContains(response, PostModelTest.posts[1].text)
-        response = self.authorized_client.get(reverse('posts:profile', kwargs={'username': PostModelTest.user.username}))
+        response = self.authorized_client.get(reverse(
+            'posts:profile',
+            kwargs={'username': PostModelTest.user.username}
+        ))
         self.assertContains(response, PostModelTest.posts[1].text)
 
     def test_post_does_not_appear_on_wrong_group_page(self):
@@ -160,5 +185,8 @@ class PostModelTest(TestCase):
             slug='wrong_slug',
             description='Описание неправильной группы',
         )
-        response = self.authorized_client.get(reverse('posts:group_list', kwargs={'slug': group2.slug}))
+        response = self.authorized_client.get(reverse(
+            'posts:group_list',
+            kwargs={'slug': group2.slug}
+        ))
         self.assertNotContains(response, PostModelTest.posts[1].text)

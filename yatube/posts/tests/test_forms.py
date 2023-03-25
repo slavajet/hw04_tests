@@ -39,7 +39,10 @@ class PostFormTest(TestCase):
             data=post_data,
             follow=True
         )
-        self.assertRedirects(response, reverse('posts:profile', kwargs={'username': PostFormTest.user.username}))
+        self.assertRedirects(response, reverse(
+            'posts:profile',
+            kwargs={'username': PostFormTest.user.username}
+        ))
         self.assertEqual(Post.objects.count(), post_count + 1)
         self.assertTrue(
             Post.objects.filter(
@@ -57,7 +60,10 @@ class PostFormTest(TestCase):
             'group': PostFormTest.post.group.pk,
         }
         response = self.authorized_client.post(
-            reverse('posts:post_edit', kwargs={'post_id': PostFormTest.post.pk}),
+            reverse(
+                'posts:post_edit',
+                kwargs={'post_id': PostFormTest.post.pk}
+            ),
             data=edit_data)
         edit_text = edit_data['text']
 
