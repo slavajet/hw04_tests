@@ -1,4 +1,4 @@
-from constants import TEXT_PREVIEW
+from posts import constants
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -33,7 +33,7 @@ class Post(models.Model):
         ordering = ['-pub_date']
 
     def __str__(self):
-        return self.text[:TEXT_PREVIEW]
+        return self.text[:constants.TEXT_PREVIEW]
 
 
 class Group(models.Model):
