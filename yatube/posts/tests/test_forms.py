@@ -29,6 +29,7 @@ class PostFormTest(TestCase):
         self.authorized_client.force_login(self.user)
 
     def test_create_post(self):
+        """При отправке валидной формы, пост создается в базе данных"""
         post_count = Post.objects.count()
         post_data = {
             'text': 'Бла бла бла',
@@ -52,6 +53,7 @@ class PostFormTest(TestCase):
         )
 
     def test_post_edit(self):
+        """При отправке валидной формы, пост менется в базе данных"""
         post_count = Post.objects.count()
         orignal_text = PostFormTest.post.text
 
@@ -74,3 +76,19 @@ class PostFormTest(TestCase):
                 'posts:post_detail', kwargs={'post_id': PostFormTest.post.pk}))
 
         self.assertNotEqual(orignal_text, edit_text)
+
+    def test_unauthorized_client_cant_create_post(self):
+        """Неавторизованный пользователь не может создать пост"""
+        post_count = Post.objects.count()
+        post_data = {
+            'text': 'Бла бла бла',
+            'group': PostFormTest.post.group.pk,
+        }
+        response = self.guest_client.post(
+            reverse('posts:post_create'),
+            data=post_data,
+            follow=True
+        )
+        self.assertRedirects(response, reverse('login')
+                             + '?next=' + reverse('posts:post_create'))
+        self.assertEqual(Post.objects.count(), post_count)

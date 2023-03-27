@@ -1,6 +1,5 @@
+from constants import POST_PER_PAGE
 from django.core.paginator import Paginator
-
-POST_PER_PAGE = 10
 
 
 def paginate(request, post_list):
