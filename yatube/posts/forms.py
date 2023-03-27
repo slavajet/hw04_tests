@@ -6,12 +6,14 @@ from .models import Post
 class PostForm(ModelForm):
     class Meta:
         model = Post
-        fields = ('text', 'group',)
+        fields = ('text', 'group', 'image')
         labels = {
             'text': ('Текст'),
             'group': ('Группа'),
+            'image': ('Картинка'),
         }
         help_texts = {
             'text': 'Здесь можно написать свой великолепный пост',
-            'group': 'Если нет подходящей группы, оставьте поле пустым'
+            'group': 'Если нет подходящей группы, оставьте поле пустым',
+            'image': 'Можете прикрепить изображение',
         }

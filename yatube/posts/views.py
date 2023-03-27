@@ -38,8 +38,11 @@ def profile(request, username):
 
 def post_detail(request, post_id):
     full_post = get_object_or_404(Post, id=post_id)
+    author_posts = Post.objects.filter(author=full_post.author)
+    post_count = author_posts.count()
     context = {
         'full_post': full_post,
+        'post_count': post_count,
     }
     return render(request, 'posts/post_detail.html', context)
 
@@ -64,19 +67,21 @@ def post_create(request):
 
 @login_required
 def post_edit(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
+    post = get_object_or_404(Post, pk=post_id)
+    if post.author != request.user:
+        return redirect('posts:post_detail', post_id=post_id)
 
-    if request.method != "POST":
-        form = PostForm(instance=post)
-        context = {'form': form}
-        return render(request, 'posts/create_post.html', context)
-
-    form = PostForm(request.POST, instance=post)
-    if not form.is_valid():
-        context = {'form': form}
-        return render(request, 'posts/create_post.html', context)
-
-    post = form.save(commit=False)
-    post.author = request.user
-    post.save()
-    return redirect('posts:post_detail', post_id)
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None,
+        instance=post
+    )
+    if form.is_valid():
+        form.save()
+        return redirect('posts:post_detail', post_id=post_id)
+    context = {
+        'post': post,
+        'form': form,
+        'is_edit': True,
+    }
+    return render(request, 'posts/create_post.html', context)
