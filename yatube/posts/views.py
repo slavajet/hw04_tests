@@ -54,7 +54,7 @@ def post_create(request):
         context = {'form': form}
         return render(request, 'posts/create_post.html', context)
 
-    form = PostForm(request.POST)
+    form = PostForm(request.POST, request.FILES)
     if not form.is_valid():
         context = {'form': form}
         return render(request, 'posts/create_post.html', context)

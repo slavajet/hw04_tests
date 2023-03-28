@@ -1,7 +1,11 @@
+import shutil
+import tempfile
 from django import forms
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.cache import cache
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from posts.forms import PostForm
@@ -9,8 +13,10 @@ from posts.models import Group, Post
 
 User = get_user_model()
 NUMBER_OF_POSTS = 13
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostModelTest(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -21,20 +27,39 @@ class PostModelTest(TestCase):
             slug='test_slug',
             description='Тестовое описание',
         )
+        cls.image = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.image,
+            content_type='image/gif'
+        )
         post_list = []
         for i in range(NUMBER_OF_POSTS):
             post = Post(
                 text=f'Тестовый пост-{i}',
                 author=cls.user,
                 group=cls.group,
+                image=cls.uploaded
             )
             post_list.append(post)
         Post.objects.bulk_create(post_list)
         cls.posts = Post.objects.all()
         cls.form_fields = {
             'text': forms.fields.CharField,
-            'group': forms.fields.ChoiceField
+            'group': forms.fields.ChoiceField,
+            'image': forms.fields.ImageField,
         }
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         cache.clear()
@@ -87,7 +112,10 @@ class PostModelTest(TestCase):
                 first_object = response.context['page_obj'][0]
                 self.assertEqual(response.status_code, 200)
                 self.assertIn('page_obj', response.context)
-                self.assertEqual(first_object.text, self.posts[0].text)
+                self.assertEqual(
+                    first_object.text,
+                    PostModelTest.posts[0].text
+                )
                 self.assertEqual(
                     first_object.author.username,
                     self.user.username
@@ -95,6 +123,10 @@ class PostModelTest(TestCase):
                 self.assertEqual(
                     first_object.group.title,
                     PostModelTest.group.title
+                )
+                self.assertEqual(
+                    first_object.image,
+                    PostModelTest.posts[0].image
                 )
 
     def test_post_detail_show_correct_context(self):
@@ -111,6 +143,10 @@ class PostModelTest(TestCase):
             PostModelTest.user.username
         )
         self.assertEqual(first_object.group.title, PostModelTest.group.title)
+        self.assertEqual(
+            first_object.image,
+            PostModelTest.posts[1].image
+        )
 
     def test_post_create_show_correct_context(self):
         """Cловарь contex соответствует ожиданиям на странице 'post_create'"""

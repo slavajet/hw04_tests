@@ -1,12 +1,19 @@
+import shutil
+import tempfile
+
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from posts.models import Group, Post
 
 User = get_user_model()
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
 
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostFormTest(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -22,6 +29,23 @@ class PostFormTest(TestCase):
             text='Тестовый пост',
             group=cls.group
         )
+        cls.image = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=cls.image,
+            content_type='image/gif'
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.guest_client = Client()
@@ -34,6 +58,7 @@ class PostFormTest(TestCase):
         post_data = {
             'text': 'Бла бла бла',
             'group': PostFormTest.post.group.pk,
+            'image': PostFormTest.uploaded,
         }
         response = self.authorized_client.post(
             reverse('posts:post_create'),
@@ -49,6 +74,7 @@ class PostFormTest(TestCase):
             Post.objects.filter(
                 group=PostFormTest.post.group.pk,
                 text='Бла бла бла',
+                image='posts/small.gif'
             ).exists()
         )
 
