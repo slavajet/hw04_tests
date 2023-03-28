@@ -9,7 +9,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from posts.forms import PostForm
-from posts.models import Group, Post
+from posts.models import Group, Post, Comment
 
 User = get_user_model()
 NUMBER_OF_POSTS = 13
@@ -226,3 +226,28 @@ class PostModelTest(TestCase):
             kwargs={'slug': group2.slug}
         ))
         self.assertNotContains(response, PostModelTest.posts[1].text)
+
+    def test_unauthorized_client_cant_write_comment(self):
+        """Неавторизованный пользователь не может оставить комментарий"""
+        comments_count = Comment.objects.filter(
+            post_id=PostModelTest.post[2].id
+        ).count()
+        self.guest_client.post(
+            reverse('posts:add_comment', args=[PostModelTest.post[2].id]),
+            data={'text': 'Новый комментарий'}
+        )
+        self.assertEqual(
+            Comment.objects.filter(post_id=PostModelTest.post[2].id).count(),
+            comments_count)
+
+    def test_comment_show_on_post_page(self):
+        """Комментарий выводится на странице поста."""
+        self.authorized_client.post(
+            reverse('posts:add_comment', args=[PostModelTest.post[2].id]),
+            data={'text': 'Новый комментарий'}
+        )
+        response = self.authorized_client.get(
+            reverse('posts:post_detail', args=[PostModelTest.post[2].id])
+        )
+        self.assertEqual(response.context.get('comments')[0].text,
+                         'Новый комментарий')
