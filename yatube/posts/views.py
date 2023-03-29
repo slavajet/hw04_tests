@@ -5,7 +5,7 @@ from django.views.decorators.cache import cache_page
 from posts import constants
 
 from .forms import CommentForm, PostForm
-from .models import Group, Post, User
+from .models import Group, Post, User, Follow
 from .utils import paginate
 
 
@@ -32,10 +32,14 @@ def group_posts(request, slug):
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     post_list = author.post_set.all()
+    post_count = post_list.count()
+    following = Follow.objects.filter(user=request.user, author=author).exists()
     context = {
         'author': author,
         'page_obj': paginate(request, post_list),
         'posts': post_list,
+        'post_count': post_count,
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
@@ -105,3 +109,28 @@ def add_comment(request, post_id):
         comment.post = post
         comment.save()
     return redirect('posts:post_detail', post_id=post_id)
+
+
+@login_required
+def follow_index(request):
+    post_list = Post.objects.filter(author__following__user=request.user)
+    context = {
+        'page_obj': paginate(request, post_list)
+    }
+    return render(request, 'posts/follow.html', context)
+
+
+@login_required
+def profile_follow(request, username):
+    author = get_object_or_404(User, username=username)
+    if author != request.user and not Follow.objects.filter(
+            user=request.user, author=author).exists():
+        Follow.objects.create(user=request.user, author=author)
+    return redirect('posts:profile', username)
+
+
+@login_required
+def profile_unfollow(request, username):
+    author = get_object_or_404(User, username=username)
+    Follow.objects.filter(user=request.user, author=author).delete()
+    return redirect('posts:profile', username)
