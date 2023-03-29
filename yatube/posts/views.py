@@ -2,10 +2,10 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import cache_page
 from django.shortcuts import get_object_or_404, redirect, render
 
-from forms import PostForm, CommentForm
-from models import Group, Post, User
+from .forms import PostForm, CommentForm
+from .models import Group, Post, User
 from posts import constants
-from utils import paginate
+from .utils import paginate
 
 
 @cache_page(constants.INDEX_CACHE, key_prefix='index_page')

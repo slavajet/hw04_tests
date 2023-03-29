@@ -230,24 +230,39 @@ class PostModelTest(TestCase):
     def test_unauthorized_client_cant_write_comment(self):
         """Неавторизованный пользователь не может оставить комментарий"""
         comments_count = Comment.objects.filter(
-            post_id=PostModelTest.post[2].id
+            post_id=PostModelTest.posts[2].id
         ).count()
         self.guest_client.post(
-            reverse('posts:add_comment', args=[PostModelTest.post[2].id]),
+            reverse('posts:add_comment', args=[PostModelTest.posts[2].id]),
             data={'text': 'Новый комментарий'}
         )
         self.assertEqual(
-            Comment.objects.filter(post_id=PostModelTest.post[2].id).count(),
+            Comment.objects.filter(post_id=PostModelTest.posts[2].id).count(),
             comments_count)
 
     def test_comment_show_on_post_page(self):
         """Комментарий выводится на странице поста."""
         self.authorized_client.post(
-            reverse('posts:add_comment', args=[PostModelTest.post[2].id]),
+            reverse('posts:add_comment', args=[PostModelTest.posts[2].id]),
             data={'text': 'Новый комментарий'}
         )
         response = self.authorized_client.get(
-            reverse('posts:post_detail', args=[PostModelTest.post[2].id])
+            reverse('posts:post_detail', args=[PostModelTest.posts[2].id])
         )
         self.assertEqual(response.context.get('comments')[0].text,
                          'Новый комментарий')
+
+    def test_cache_index_page(self):
+        """Кеширование работает верно."""
+        test_post = Post.objects.create(
+            text='Этот пост будет удален',
+            author=PostModelTest.user,
+            group=PostModelTest.group
+        )
+        check_content = self.guest_client.get(reverse('posts:index')).content
+        test_post.delete()
+        cached_content = self.guest_client.get(reverse('posts:index')).content
+        self.assertEqual(check_content, cached_content)
+        cache.clear()
+        cleared_cache = self.guest_client.get(reverse('posts:index')).content
+        self.assertNotEqual(cached_content, cleared_cache)
