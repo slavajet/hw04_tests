@@ -10,7 +10,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from posts.forms import PostForm
-from posts.models import Comment, Group, Post
+from posts.models import Comment, Group, Post, Follow
 
 User = get_user_model()
 NUMBER_OF_POSTS = 13
@@ -23,6 +23,8 @@ class PostModelTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='slava')
+        cls.follower = User.objects.create_user(username='follower')
+        cls.non_follower = User.objects.create_user(username='non_follower')
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test_slug',
@@ -67,6 +69,10 @@ class PostModelTest(TestCase):
         self.guest_client = Client()
         self.authorized_client = Client()
         self.authorized_client.force_login(self.user)
+        self.follower_client = Client()
+        self.follower_client.force_login(self.follower)
+        self.non_follower_client = Client()
+        self.non_follower_client.force_login(self.non_follower)
 
     def test_pages_uses_correct_template(self):
         """Во view-функциях используются правильные html-шаблоны"""
@@ -267,3 +273,39 @@ class PostModelTest(TestCase):
         cache.clear()
         cleared_cache = self.guest_client.get(reverse('posts:index')).content
         self.assertNotEqual(cached_content, cleared_cache)
+
+    def test_authorized_client_can_follow_author(self):
+        """Авторизованный пользователь может подписаться на автора"""
+        response = self.follower_client.post(
+            reverse('posts:profile_follow', args=[PostModelTest.user.username])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Follow.objects.filter(
+            user=self.follower.id,
+            author=self.user.id).exists())
+
+    def test_authorized_client_can_unfollow_author(self):
+        """Авторизованный пользователь может отписаться от автора"""
+        response = self.follower_client.post(
+            reverse('posts:profile_unfollow',
+                    args=[PostModelTest.user.username])
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Follow.objects.filter(
+            user=PostModelTest.follower.id,
+            author=PostModelTest.user.id).exists())
+
+    def test_post_appears_in_followers_feed(self):
+        """Новый пост появляется на странице подписчика
+        и не появляется в ленте неподписанного пользователя"""
+        Follow.objects.create(user=PostModelTest.follower,
+                              author=PostModelTest.user)
+        new_post = Post.objects.create(
+            text='Новый пост для подписчика',
+            author=PostModelTest.user,
+            group=PostModelTest.group
+        )
+        response = self.follower_client.get(reverse('posts:follow_index'))
+        self.assertContains(response, new_post.text)
+        response = self.non_follower_client.get(reverse('posts:follow_index'))
+        self.assertNotContains(response, new_post.text)
